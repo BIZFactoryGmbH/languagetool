@@ -1220,6 +1220,7 @@
                     <artifactId>git-commit-id-maven-plugin</artifactId>
                     <version>${git-commit-id-plugin-17.version}</version>
                     <configuration>
+                        <failOnNoGitDirectory>false</failOnNoGitDirectory>
                         <generateGitPropertiesFile>true</generateGitPropertiesFile>
                         <generateGitPropertiesFilename>${project.build.outputDirectory}/git.properties</generateGitPropertiesFilename>
                     </configuration>
@@ -1238,6 +1239,7 @@
                     <artifactId>git-commit-id-plugin</artifactId>
                     <version>${git-commit-id-plugin-8.version}</version>
                     <configuration>
+                        <failOnNoGitDirectory>false</failOnNoGitDirectory>
                         <generateGitPropertiesFile>true</generateGitPropertiesFile>
                         <generateGitPropertiesFilename>${project.build.outputDirectory}/git.properties</generateGitPropertiesFilename>
                     </configuration>
