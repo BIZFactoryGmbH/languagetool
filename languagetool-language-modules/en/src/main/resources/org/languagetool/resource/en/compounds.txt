@@ -516,6 +516,7 @@ double-headed*
 double-jointed*
 double-parked*
 double-sided*
+dual-sided*
 Douglas-Home*
 down-hearted*
 drink-driving*
@@ -5975,7 +5976,7 @@ self-hosts*
 self-hosted*
 self-hosting*
 multi-mode?
-multi-module?
+multi-module$
 sand-pit?
 sand-pits?
 high-fived*
@@ -6306,7 +6307,6 @@ co-founders$
 Co-Founders$
 co-founding$
 Idar-Oberstein*
-Frankfurt-Hahn*
 Frankfurt-Hahn*
 industrial-sized*
 war-fare?
@@ -9001,3 +9001,12 @@ red-tapisms*
 red-tapeism*
 red-tapeisms*
 Lennox-Gastaut*
+Rostock-Laage*
+sharp-shooter?
+sharp-shooters?
+Castrop-Rauxel*
+doo-rag*
+doo-rags*
+flood-gate?
+flood-gates?
+uncared-for*

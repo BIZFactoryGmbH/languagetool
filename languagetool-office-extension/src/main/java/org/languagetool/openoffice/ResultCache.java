@@ -40,14 +40,14 @@ import com.sun.star.text.TextMarkupType;
  * @author Fred Kruse
  * @since 4.3
  */
-class ResultCache implements Serializable {
+public class ResultCache implements Serializable {
 
   private static final long serialVersionUID = 2L;
-  private Map<Integer, SerialCacheEntry> entries;
+  private final Map<Integer, SerialCacheEntry> entries = new HashMap<Integer, SerialCacheEntry>();
   
   private ReentrantReadWriteLock rwLock = new ReentrantReadWriteLock();
   
-  ResultCache() {
+  public ResultCache() {
     this(null);
   }
 
@@ -70,13 +70,12 @@ class ResultCache implements Serializable {
   /**
    * Replace the cache content
    */
-  void replace(ResultCache cache) {
+  public void replace(ResultCache cache) {
     rwLock.writeLock().lock();
     try {
-      if (cache == null || cache.entries == null) {
-        entries = new HashMap<>();
-      } else {
-        entries = cache.getMap();
+      entries.clear();
+      if (cache != null && !cache.entries.isEmpty()) {
+        entries.putAll(cache.getMap());
       }
     } finally {
       rwLock.writeLock().unlock();
@@ -86,7 +85,7 @@ class ResultCache implements Serializable {
   /**
    * Remove all cache entries for a paragraph
    */
-  void remove(int numberOfParagraph) {
+  public void remove(int numberOfParagraph) {
     rwLock.writeLock().lock();
     try {
       entries.remove(numberOfParagraph);
@@ -98,7 +97,7 @@ class ResultCache implements Serializable {
   /**
    * Remove all cache entries between firstParagraph and lastParagraph
    */
-  void removeRange(int firstParagraph, int lastParagraph) {
+  public void removeRange(int firstParagraph, int lastParagraph) {
     rwLock.writeLock().lock();
     try {
       for (int i = firstParagraph; i <= lastParagraph; i++) {
@@ -113,30 +112,30 @@ class ResultCache implements Serializable {
    * Remove all cache entries between firstPara (included) and lastPara (excluded)
    * shift all numberOfParagraph by 'shift'
    */
-  void removeAndShift(int firstParagraph, int lastParagraph, int oldSize, int newSize) {
+  public void removeAndShift(int fromParagraph, int toParagraph, int oldSize, int newSize) {
     int shift = newSize - oldSize;
-    if (lastParagraph < firstParagraph || shift == 0) {
+    if (fromParagraph < 0 && toParagraph >= newSize) {
       return;
     }
     rwLock.writeLock().lock();
     try {
-      Map<Integer, SerialCacheEntry> tmpEntries = entries;
-      entries = new HashMap<>();
-      if (shift < 0) {
+      Map<Integer, SerialCacheEntry> tmpEntries = new HashMap<Integer, SerialCacheEntry>(entries);
+      entries.clear();
+      if (shift < 0) {   // new size < old size
         for (int i : tmpEntries.keySet()) {
-          if (i >= firstParagraph - shift) {
-            entries.put(i + shift, tmpEntries.get(i));
-          } else if (i < firstParagraph){
+          if (i < fromParagraph) {
             entries.put(i, tmpEntries.get(i));
-          } 
+          } else if (i >= toParagraph - shift) {
+              entries.put(i + shift, tmpEntries.get(i));
+          }
         }
       } else {
         for (int i : tmpEntries.keySet()) {
-          if (i > firstParagraph && i + shift >= 0) {
-            entries.put(i + shift, tmpEntries.get(i));
-          } else if (i < firstParagraph) {
+          if (i < fromParagraph) {
             entries.put(i, tmpEntries.get(i));
-          } 
+          } else if (i >= toParagraph) {
+              entries.put(i + shift, tmpEntries.get(i));
+          }
         }
       }
     } finally {
@@ -147,7 +146,7 @@ class ResultCache implements Serializable {
   /**
    * add or replace a cache entry
    */
-  void put(int numberOfParagraph, List<Integer> nextSentencePositions, SingleProofreadingError[] errorArray) {
+  public void put(int numberOfParagraph, List<Integer> nextSentencePositions, SingleProofreadingError[] errorArray) {
     rwLock.writeLock().lock();
     try {
       entries.put(numberOfParagraph, new SerialCacheEntry(nextSentencePositions, errorArray));
@@ -159,7 +158,7 @@ class ResultCache implements Serializable {
   /**
    * add or replace a cache entry for paragraph
    */
-  void put(int numberOfParagraph, SingleProofreadingError[] errorArray) {
+  public void put(int numberOfParagraph, SingleProofreadingError[] errorArray) {
     rwLock.writeLock().lock();
     try {
       entries.put(numberOfParagraph, new SerialCacheEntry(null, errorArray));
@@ -171,7 +170,7 @@ class ResultCache implements Serializable {
   /**
    * add proof reading errors to a cache entry for paragraph
    */
-  void add(int numberOfParagraph, SingleProofreadingError[] errorArray) {
+  public void add(int numberOfParagraph, SingleProofreadingError[] errorArray) {
     rwLock.writeLock().lock();
     try {
       SerialCacheEntry cacheEntry = entries.get(numberOfParagraph);
@@ -185,7 +184,7 @@ class ResultCache implements Serializable {
   /**
    * Remove all cache entries
    */
-  void removeAll() {
+  public void removeAll() {
     rwLock.writeLock().lock();
     try {
       entries.clear();
@@ -195,9 +194,57 @@ class ResultCache implements Serializable {
   }
 
   /**
+   * Size of cache (size of entries)
+   */
+  public int size() {
+    rwLock.readLock().lock();
+    try {
+      return entries.size();
+    } finally {
+      rwLock.readLock().unlock();
+    }
+  }
+
+  /**
    * get cache entry of paragraph
    */
-  CacheEntry getCacheEntry(int numberOfParagraph) {
+  public int getNumberofNotNullEntries() {
+    rwLock.readLock().lock();
+    try {
+      int num = 0;
+      for (int n : entries.keySet()) {
+        if (entries.get(n) != null) {
+          num++;
+        }
+      }
+      return num;
+    } finally {
+      rwLock.readLock().unlock();
+    }
+  }
+
+  /**
+   * get cache entry of paragraph
+   */
+  public int getNumberofErrors() {
+    rwLock.readLock().lock();
+    try {
+      int num = 0;
+      for (int n : entries.keySet()) {
+        if (entries.get(n) != null) {
+          num += entries.get(n).errorArray.length;
+        }
+      }
+      return num;
+    } finally {
+      rwLock.readLock().unlock();
+    }
+  }
+
+  /**
+   * get cache entry of paragraph
+   */
+  public CacheEntry getCacheEntry(int numberOfParagraph) {
     rwLock.readLock().lock();
     try {
       SerialCacheEntry entry = entries.get(numberOfParagraph);
@@ -210,15 +257,36 @@ class ResultCache implements Serializable {
   /**
    * get cache entry of paragraph without read lock 
    */
-  CacheEntry getUnsafeCacheEntry(int numberOfParagraph) {
+  public CacheEntry getUnsafeCacheEntry(int numberOfParagraph) {
     SerialCacheEntry entry = entries.get(numberOfParagraph);
     return entry == null ? null : new CacheEntry(entry);
   }
 
   /**
+   * cache has an Error or has reached a limit of entries
+   */
+  public boolean hasAnError(int limit) {
+    rwLock.readLock().lock();
+    try {
+      if (entries.size() >= limit) {
+        return true;
+      }
+      Set<Integer> paras = new HashSet<>(entries.keySet());
+      for (int n : paras) {
+        if (entries.get(n).errorArray.length > 0) {
+          return true;
+        }
+      }
+      return false;
+    } finally {
+      rwLock.readLock().unlock();
+    }
+  }
+
+  /**
    * get cache entry of paragraph
    */
-  SerialCacheEntry getSerialCacheEntry(int numberOfParagraph) {
+  public SerialCacheEntry getSerialCacheEntry(int numberOfParagraph) {
     rwLock.readLock().lock();
     try {
       return entries.get(numberOfParagraph);
@@ -229,24 +297,17 @@ class ResultCache implements Serializable {
 
   /**
    * get Proofreading errors of on paragraph from cache
+   * get an error array, if a prargrapherray exists
    */
-  SingleProofreadingError[] getUnsafeMatches(int numberOfParagraph) {
-    SerialCacheEntry entry = entries.get(numberOfParagraph);
-    if (entry == null) {
-      return null;
-    }
-    return entry.getErrorArray();
-  }
-
-  /**
-   * get Proofreading errors of on paragraph from cache
-   */
-  SingleProofreadingError[] getMatches(int numberOfParagraph) {
+  public SingleProofreadingError[] getSafeMatches(int numberOfParagraph) {
     rwLock.readLock().lock();
     try {
       SerialCacheEntry entry = entries.get(numberOfParagraph);
       if (entry == null) {
         return null;
+      }
+      if (entry.errorArray == null) {
+        return (new SingleProofreadingError[0]);
       }
       return entry.getErrorArray();
     } finally {
@@ -255,9 +316,36 @@ class ResultCache implements Serializable {
   }
 
   /**
+   * get Proofreading errors of on paragraph from cache
+   */
+  public SingleProofreadingError[] getMatches(int numberOfParagraph, LoErrorType errType) {
+    rwLock.readLock().lock();
+    try {
+      SerialCacheEntry entry = entries.get(numberOfParagraph);
+      if (entry == null) {
+        return null;
+      }
+      SingleProofreadingError[] errorArray = entry.getErrorArray();
+      if (errType == LoErrorType.BOTH || errorArray == null || errorArray.length == 0) {
+        return errorArray;
+      }
+      List<SingleProofreadingError> errorList = new ArrayList<>();
+      for (SingleProofreadingError eArray : errorArray) {
+        if ((errType == LoErrorType.GRAMMAR && eArray.nErrorType == TextMarkupType.PROOFREADING)
+            || (errType == LoErrorType.SPELL && eArray.nErrorType == TextMarkupType.SPELLCHECK)) {
+          errorList.add(eArray);
+        }
+      }
+      return errorList.toArray(new SingleProofreadingError[errorList.size()]);
+    } finally {
+      rwLock.readLock().unlock();
+    }
+  }
+
+  /**
    * get start sentence position from cache
    */
-  int getStartSentencePosition(int numberOfParagraph, int sentencePosition) {
+  public int getStartSentencePosition(int numberOfParagraph, int sentencePosition) {
     rwLock.readLock().lock();
     try {
       SerialCacheEntry entry = entries.get(numberOfParagraph);
@@ -284,7 +372,7 @@ class ResultCache implements Serializable {
   /**
    * get next sentence position from cache
    */
-  int getNextSentencePosition(int numberOfParagraph, int sentencePosition) {
+  public int getNextSentencePosition(int numberOfParagraph, int sentencePosition) {
     rwLock.readLock().lock();
     try {
       SerialCacheEntry entry = entries.get(numberOfParagraph);
@@ -309,7 +397,7 @@ class ResultCache implements Serializable {
   /**
    * get Proofreading errors of sentence out of paragraph matches from cache
    */
-  SingleProofreadingError[] getFromPara(int numberOfParagraph,
+  public SingleProofreadingError[] getFromPara(int numberOfParagraph,
                                         int startOfSentencePosition, int endOfSentencePosition, LoErrorType errType) {
     rwLock.readLock().lock();
     try {
@@ -336,7 +424,7 @@ class ResultCache implements Serializable {
    * Compares to Entries
    * true if the both entries are NOT identically
    */
-  static boolean areDifferentEntries(SerialCacheEntry newEntries, SerialCacheEntry oldEntries) {
+  public static boolean areDifferentEntries(SerialCacheEntry newEntries, SerialCacheEntry oldEntries) {
     if (newEntries == null || oldEntries == null) {
       return true;
     }
@@ -367,7 +455,7 @@ class ResultCache implements Serializable {
   /**
    * true if entry has no error
    */
-  static boolean isEmptyEntry(SerialCacheEntry entry) {
+  public static boolean isEmptyEntry(SerialCacheEntry entry) {
     if (entry == null || entry.errorArray == null || entry.errorArray.length == 0) {
       return true;
     }
@@ -378,7 +466,7 @@ class ResultCache implements Serializable {
    * Compares a paragraph cache with another cache.
    * Gives back a list of entries for every paragraph: true if the both entries are identically
    */
-  List<Integer> differenceInCaches(ResultCache oldCache) {
+  public List<Integer> differenceInCaches(ResultCache oldCache) {
     rwLock.readLock().lock();
     try {
       List<Integer> differentParas = new ArrayList<>();
@@ -406,7 +494,7 @@ class ResultCache implements Serializable {
    * Remove a special Proofreading error from cache
    * Returns all changed paragraphs as list
    */
-  List<Integer> removeRuleError(String ruleId) {
+  public List<Integer> removeRuleError(String ruleId) {
     rwLock.writeLock().lock();
     try {
       List<Integer> changed = new ArrayList<>();
@@ -441,7 +529,7 @@ class ResultCache implements Serializable {
   /**
    * get number of paragraphs stored in cache
    */
-  int getNumberOfParas() {
+  public int getNumberOfParas() {
     rwLock.readLock().lock();
     try {
       return entries.size();
@@ -453,7 +541,7 @@ class ResultCache implements Serializable {
   /**
    * get number of entries
    */
-  int getNumberOfEntries() {
+  public int getNumberOfEntries() {
     rwLock.readLock().lock();
     try {
       return entries.size();
@@ -465,7 +553,7 @@ class ResultCache implements Serializable {
   /**
    * get number of matches
    */
-  int getNumberOfMatches() {
+  public int getNumberOfMatches() {
     rwLock.readLock().lock();
     try {
       int number = 0;
@@ -483,7 +571,7 @@ class ResultCache implements Serializable {
    * if there are more than one error at the position return the one which begins at second
    * if there are more than one that begins at the same position return the one with the smallest size
    */
-  SingleProofreadingError getErrorAtPosition(int numPara, int numChar) {
+  public SingleProofreadingError getErrorAtPosition(int numPara, int numChar) {
     rwLock.readLock().lock();
     try {
       SerialCacheEntry entry = entries.get(numPara);
@@ -509,8 +597,8 @@ class ResultCache implements Serializable {
    * Class of serializable cache entries
    */
   public static class CacheEntry {
-    SingleProofreadingError[] errorArray;
-    List<Integer> nextSentencePositions = null;
+    public SingleProofreadingError[] errorArray;
+    public List<Integer> nextSentencePositions = null;
 
     CacheEntry(SerialCacheEntry entry) {
       if (entry.nextSentencePositions != null) {
@@ -525,7 +613,7 @@ class ResultCache implements Serializable {
     /**
      * Get an SingleProofreadingError array for one entry
      */
-    SingleProofreadingError[] getErrorArray() {
+    public SingleProofreadingError[] getErrorArray() {
       return errorArray;
     }
   }

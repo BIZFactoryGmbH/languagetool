@@ -32,6 +32,7 @@ import org.languagetool.tools.StringTools;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -43,18 +44,12 @@ public class MultitokenSpellerFilter extends RuleFilter {
   @Override
   public RuleMatch acceptRuleMatch(RuleMatch match, Map<String, String> arguments, int patternTokenPos,
                                    AnalyzedTokenReadings[] patternTokens) throws IOException {
-    boolean keepSpaces = getOptional("keepSpaces", arguments, "true").equalsIgnoreCase("true")? true: false;
-    String requireRegexp = getOptional("requireRegexp", arguments);
-    String underlinedError = match.getOriginalErrorStr();
-    int numSpaces = StringTools.numberOf(underlinedError, " ");
-    int numHyphens = StringTools.numberOf(underlinedError, "-");
-    int decreaseDistance = 0;
-    if (requireRegexp != null) {
-      decreaseDistance = 2;
+    if (Arrays.stream(patternTokens).allMatch(x -> x.isIgnoredBySpeller())) {
+      return null;
     }
-    int maxLevenshteinDistance = 2 + (numSpaces + numHyphens) * 2 - decreaseDistance;
+    String underlinedError = match.getOriginalErrorStr();
     Language lang = ((PatternRule) match.getRule()).getLanguage();
-    List<String> replacements = lang.getMultitokenSpeller().getSuggestions(underlinedError, maxLevenshteinDistance);
+    List<String> replacements = lang.getMultitokenSpeller().getSuggestions(underlinedError);
     if (replacements.isEmpty()) {
       return null;
     }

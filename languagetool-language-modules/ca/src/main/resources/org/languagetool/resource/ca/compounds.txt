@@ -474,7 +474,6 @@ Chaumont-sur-Loire*
 chill-out*
 chill-outs*
 Choisy-le-Roi*
-Chupa-Chups*
 Châlons-en-Champagne*
 Châtenay-Malabry*
 cinc-centena*
@@ -1828,7 +1827,7 @@ walkie-talkies*
 Weston-super-Mare*
 Wi-Fi*
 Wilkes-Barre*
-Windisch-Graetz*
+Windisch-Grätz*
 Winston-Salem*
 Xampanya-Ardenes*
 xano-xano*

@@ -69,8 +69,8 @@ public abstract class MorfologikSpellerRule extends SpellingCheckRule {
   //do not use very frequent words in split word suggestions ex. to *thow ≠ tot how 
   static final int MAX_FREQUENCY_FOR_SPLITTING = 21; //0..21
   
-  private final Pattern pStartsWithNumbersBullets = Pattern.compile("^(\\d[\\.,\\d]*|\\P{L}+)(.*)$");
-  private final Pattern pStartsWithNumbersBulletsExceptions = Pattern.compile("^([\\p{C}\\-\\$%&]+)(.*)$");
+  private final static Pattern pStartsWithNumbersBullets = Pattern.compile("^(\\d[\\.,\\d]*|\\P{L}+)(.*)$");
+  private final static Pattern pStartsWithNumbersBulletsExceptions = Pattern.compile("^([\\p{C}\\-\\$%&]+)(.*)$");
 
 
   /**
@@ -205,10 +205,10 @@ public abstract class MorfologikSpellerRule extends SpellingCheckRule {
         isFirstWord = false;
       }
       if (foreignLanguageChecker != null && !gotResultsFromForeignLanguageChecker) {
-        String langCode = foreignLanguageChecker.check(ruleMatches.size());
-        if (langCode != null) {
-          if (!langCode.equals(ForeignLanguageChecker.NO_FOREIGN_LANG_DETECTED)) {
-            ruleMatches.get(0).setErrorLimitLang(langCode);
+        Map<String, Float> langCodesScoring = foreignLanguageChecker.check(ruleMatches.size());
+        if (!langCodesScoring.isEmpty()) {
+          if (langCodesScoring.get(ForeignLanguageChecker.NO_FOREIGN_LANG_DETECTED) == null) {
+            ruleMatches.get(0).setNewLanguageMatches(langCodesScoring);
           }
           gotResultsFromForeignLanguageChecker = true;
         }
@@ -323,6 +323,10 @@ public abstract class MorfologikSpellerRule extends SpellingCheckRule {
     RuleMatch ruleMatch = null;
     
     if (!isMisspelled(speller1, word) && !isProhibited(word)) {
+      return ruleMatches;
+    }
+
+    if (ignorePotentiallyMisspelledWord(word)) {
       return ruleMatches;
     }
     
